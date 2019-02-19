@@ -1,95 +1,77 @@
+
 import sys
 sys.path.append('/Users/kb/bin/opencv-3.1.0/build/lib/')
-
 import cv2
 import numpy as np
 
+
 def cross_correlation_2d(img, kernel):
-    '''Given a kernel of arbitrary m x n dimensions, with both m and n being
-    odd, compute the cross correlation of the given image with the given
-    kernel, such that the output is of the same dimensions as the image and that
-    you assume the pixels out of the bounds of the image to be zero. Note that
-    you need to apply the kernel to each channel separately, if the given image
-    is an RGB image.
+    #find out if its 2d (B&W) or 3d (RGB) image
+    dimension = img.ndim
+    #get shape of kernel to find size of m&n
+    kernel_shape = kernel.shape
+    m= kernel_shape[0]
+    n= kernel_shape[1]
+    # #find out how many rows of padding zeros we need
+    width= (m-1)/2
+    height = (n-1)/2
+    # pad array with zeros
+    cc_image = np.zeros(img.shape)
 
-    Inputs:
-        img:    Either an RGB image (height x width x 3) or a grayscale image
-                (height x width) as a numpy array.
-        kernel: A 2D numpy array (m x n), with m and n both odd (but may not be
-                equal).
+    if dimension == 3:
+        for channel in range(img.shape[2]):
+            current_channel = img[:,:,channel]
+            padded_channel = np.pad(current_channel,((width,width),(height,height)),'constant',constant_values=0)
+            for i in range(img.shape[0]):
+                for j in range(img.shape[1]):
+                    row = padded_channel[i:i+m,j:j+n]
+                    total = np.sum(row * kernel) 
+                    cc_image[i,j,channel] = total
+        return cc_image
+    else:
+        zero_padded_array = np.pad(img,((width,width),(height,height)),'constant',constant_values=0)
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                row = zero_padded_array[i:i+m,j:j+n]
+                total = np.sum(row * kernel) 
+                cc_image[i,j] = total
+        return cc_image
 
-    Output:
-        Return an image of the same dimensions as the input image (same width,
-        height and the number of color channels)
-    '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
+
 
 def convolve_2d(img, kernel):
-    '''Use cross_correlation_2d() to carry out a 2D convolution.
+    temp = np.flipud(kernel)
+    temp = np.fliplr(temp)
+    return cross_correlation_2d(img,temp)
 
-    Inputs:
-        img:    Either an RGB image (height x width x 3) or a grayscale image
-                (height x width) as a numpy array.
-        kernel: A 2D numpy array (m x n), with m and n both odd (but may not be
-                equal).
 
-    Output:
-        Return an image of the same dimensions as the input image (same width,
-        height and the number of color channels)
-    '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
 
 def gaussian_blur_kernel_2d(sigma, height, width):
-    '''Return a Gaussian blur kernel of the given dimensions and with the given
-    sigma. Note that width and height are different.
-
-    Input:
-        sigma:  The parameter that controls the radius of the Gaussian blur.
-                Note that, in our case, it is a circular Gaussian (symmetric
-                across height and width).
-        width:  The width of the kernel.
-        height: The height of the kernel.
-
-    Output:
-        Return a kernel of dimensions height x width such that convolving it
-        with an image results in a Gaussian-blurred image.
-    '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
+    #accounts for non-square matrtices
+    center_height=(int)(height/2)
+    center_width=(int)(width/2)
+    #make empty kernel with correct size
+    kernel=np.zeros((height,width))
+    for x in range(height):
+       for y in range(width):
+          diff=np.sqrt((x-center_height)**2+(y-center_width)**2)
+          kernel[x,y]=np.exp(-(diff**2)/float(2*sigma**2))
+    return kernel/np.sum(kernel)
 
 def low_pass(img, sigma, size):
-    '''Filter the image as if its filtered with a low pass filter of the given
-    sigma and a square kernel of the given size. A low pass filter supresses
-    the higher frequency components (finer details) of the image.
+    kernel = gaussian_blur_kernel_2d(sigma,size, size)
+    return convolve_2d(img, kernel)
 
-    Output:
-        Return an image of the same dimensions as the input image (same width,
-        height and the number of color channels)
-    '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
 
 def high_pass(img, sigma, size):
-    '''Filter the image as if its filtered with a high pass filter of the given
-    sigma and a square kernel of the given size. A high pass filter suppresses
-    the lower frequency components (coarse details) of the image.
+    #this calculates low pass
+    kernel = gaussian_blur_kernel_2d(sigma,size, size)
+    #original - low pass = high pass
+    return img - convolve_2d(img,kernel)
 
-    Output:
-        Return an image of the same dimensions as the input image (same width,
-        height and the number of color channels)
-    '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
 
 def create_hybrid_image(img1, img2, sigma1, size1, high_low1, sigma2, size2,
-        high_low2, mixin_ratio, scale_factor):
+        high_low2, mixin_ratio):
     '''This function adds two images to create a hybrid image, based on
     parameters specified by the user.'''
     high_low1 = high_low1.lower()
@@ -109,8 +91,9 @@ def create_hybrid_image(img1, img2, sigma1, size1, high_low1, sigma2, size2,
     else:
         img2 = high_pass(img2, sigma2, size2)
 
-    img1 *=  (1 - mixin_ratio)
-    img2 *= mixin_ratio
-    hybrid_img = (img1 + img2) * scale_factor
+    img1 *= 2 * (1 - mixin_ratio)
+    img2 *= 2 * mixin_ratio
+    hybrid_img = (img1 + img2)
     return (hybrid_img * 255).clip(0, 255).astype(np.uint8)
+
 
