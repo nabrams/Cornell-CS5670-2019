@@ -114,6 +114,9 @@ class HarrisKeypointDetector(KeypointDetector):
 
         harrisImage = np.zeros(srcImage.shape[:2])
         orientationImage = np.zeros(srcImage.shape[:2])
+        print("HIIIIII\n\n\n\n\n\n\n\n\n")
+        print srcImage
+
 
         # TODO 1: Compute the harris corner strength for 'srcImage' at
         # each pixel and store in 'harrisImage'.  See the project page
@@ -123,6 +126,10 @@ class HarrisKeypointDetector(KeypointDetector):
         raise Exception("TODO 1: in features.py not implemented")
         # TODO-BLOCK-END
 
+        # compare each pixel before and after by summing up the squared differences 
+        # Want the error to be high (.sort?)
+
+        
         # Save the harris image as harris.png for the website assignment
         self.saveHarrisImage(harrisImage, srcImage)
 
