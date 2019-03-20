@@ -1,6 +1,5 @@
 
 import sys
-sys.path.append('/Users/kb/bin/opencv-3.1.0/build/lib/')
 import cv2
 import numpy as np
 
